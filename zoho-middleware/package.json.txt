@@ -1,0 +1,9 @@
+{
+  "name": "zoho-middleware-function",
+  "version": "1.0.0",
+  "description": "Serverless function to post leads to Zoho CRM.",
+  "main": "create-lead.js",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoho CRM Middleware Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .token-display {
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Zoho CRM Middleware Client</h1>
+            <p class="text-gray-600 mt-2">Manage Zoho API authentication and post leads. This page acts as a client to handle token refreshes and forward lead-creation requests to Zoho CRM.</p>
+        </header>
+
+        <main class="space-y-8">
+            <!-- Security Warning -->
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                <p class="font-bold">Security Warning</p>
+                <p>This application stores your API credentials in your browser's local storage. This is not secure for production environments. This tool is intended for demonstration or personal use only. In a real-world application, this logic should reside on a secure server.</p>
+            </div>
+
+            <!-- Configuration Section -->
+            <section id="config-section" class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">1. API Configuration</h2>
+                <form id="config-form" class="space-y-4">
+                    <div>
+                        <label for="clientId" class="block text-sm font-medium text-gray-700">Client ID</label>
+                        <input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div>
+                        <label for="clientSecret" class="block text-sm font-medium text-gray-700">Client Secret</label>
+                        <input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div>
+                        <label for="redirectUri" class="block text-sm font-medium text-gray-700">Redirect URI</label>
+                        <input type="text" id="redirectUri" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                     <div>
+                        <label for="apiDomain" class="block text-sm font-medium text-gray-700">Zoho API Domain</label>
+                        <select id="apiDomain" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="https://www.zohoapis.com">United States (US)</option>
+                            <option value="https://www.zohoapis.eu">Europe (EU)</option>
+                            <option value="https://www.zohoapis.in">India (IN)</option>
+                            <option value="https://www.zohoapis.com.au">Australia (AU)</option>
+                            <option value="https://www.zohoapis.jp">Japan (JP)</option>
+                            <option value="https://crm.zoho.sa">Saudi Arabia (SA)</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <h3 class="text-lg font-medium text-gray-800">First-Time Token Generation</h3>
+                        <p class="text-sm text-gray-600 mt-1 mb-2">If you don't have a Refresh Token, paste your single-use Grant Token here and click generate. Ensure Client ID, Secret, and Redirect URI are filled out above.</p>
+                        <div>
+                            <label for="grantToken" class="block text-sm font-medium text-gray-700">Grant Token</label>
+                            <input type="text" id="grantToken" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <button type="button" id="generate-token-btn" class="mt-2 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Generate Refresh Token
+                        </button>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <h3 class="text-lg font-medium text-gray-800">Save & Start</h3>
+                        <p class="text-sm text-gray-600 mt-1 mb-2">Once the Refresh Token field below is filled (either by generating it or pasting it manually), save the configuration to start the auto-refresh process.</p>
+                        <div>
+                            <label for="refreshToken" class="block text-sm font-medium text-gray-700">Refresh Token</label>
+                            <input type="password" id="refreshToken" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <button type="submit" class="mt-2 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Save Configuration & Start Refresh
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Status Section -->
+            <section id="status-section" class="bg-white p-6 rounded-lg shadow-md hidden">
+                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2">2. Authentication Status</h2>
+                 <div class="space-y-3">
+                    <div>
+                        <p class="font-medium">Status:</p> 
+                        <span id="auth-status" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"></span>
+                    </div>
+                    <div>
+                        <p class="font-medium">Next Refresh In:</p> 
+                        <span id="countdown-timer" class="text-lg font-mono">--:--</span>
+                    </div>
+                    <div>
+                        <p class="font-medium">Current Access Token:</p> 
+                        <p id="access-token-display" class="mt-1 text-sm text-gray-500 bg-gray-50 p-2 rounded token-display">Not yet fetched.</p>
+                    </div>
+                 </div>
+            </section>
+
+            <!-- Lead Submission Section -->
+            <section id="lead-section" class="bg-white p-6 rounded-lg shadow-md hidden">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">3. Post a New Lead</h2>
+                <p class="text-sm text-gray-600 mb-4">This form simulates a request from another application to this middleware. Fill in the details and click "Post Lead" to send the data to Zoho CRM.</p>
+                <form id="lead-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name <span class="text-red-500">*</span></label>
+                            <input type="text" id="lastName" value="BBC New Lead" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-100" required>
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                            <input type="tel" id="phone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Post Lead to Zoho CRM
+                    </button>
+                </form>
+            </section>
+            
+            <!-- Log Section -->
+            <section id="log-section" class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Activity Log</h2>
+                <div id="logs" class="h-48 overflow-y-auto bg-gray-900 text-white font-mono text-sm p-4 rounded-md space-y-2">
+                    <!-- Log entries will be added here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const configForm = document.getElementById('config-form');
+            const leadForm = document.getElementById('lead-form');
+            const logsContainer = document.getElementById('logs');
+            const statusSection = document.getElementById('status-section');
+            const leadSection = document.getElementById('lead-section');
+            const authStatus = document.getElementById('auth-status');
+            const accessTokenDisplay = document.getElementById('access-token-display');
+            const countdownTimerDisplay = document.getElementById('countdown-timer');
+            const generateTokenBtn = document.getElementById('generate-token-btn');
+
+            // Inputs
+            const clientIdInput = document.getElementById('clientId');
+            const clientSecretInput = document.getElementById('clientSecret');
+            const refreshTokenInput = document.getElementById('refreshToken');
+            const apiDomainInput = document.getElementById('apiDomain');
+            const grantTokenInput = document.getElementById('grantToken');
+            const redirectUriInput = document.getElementById('redirectUri');
+
+            // State
+            let config = {};
+            let accessToken = null;
+            let refreshIntervalId = null;
+            let countdownIntervalId = null;
+
+            const REFRESH_INTERVAL_MS = 50 * 60 * 1000; // 50 minutes
+
+            // --- Logging ---
+            function logMessage(message, type = 'info') {
+                const now = new Date();
+                const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                
+                const logEntry = document.createElement('div');
+                logEntry.innerHTML = `<span class="text-gray-500">${timestamp}</span> - <span class="${type === 'error' ? 'text-red-400' : 'text-green-400'}">${type.toUpperCase()}:</span> ${message}`;
+                logsContainer.appendChild(logEntry);
+                logsContainer.scrollTop = logsContainer.scrollHeight; // Auto-scroll to bottom
+            }
+
+            // --- UI Updates ---
+            function updateAuthStatus(success, message) {
+                if (success) {
+                    authStatus.textContent = 'Authenticated';
+                    authStatus.className = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800';
+                } else {
+                    authStatus.textContent = 'Failed';
+                    authStatus.className = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800';
+                    accessTokenDisplay.textContent = message || 'Could not fetch token.';
+                }
+            }
+            
+            function startCountdown() {
+                if (countdownIntervalId) clearInterval(countdownIntervalId);
+
+                let timeLeft = REFRESH_INTERVAL_MS;
+                
+                const update = () => {
+                    const minutes = Math.floor((timeLeft / 1000 / 60) % 60).toString().padStart(2, '0');
+                    const seconds = Math.floor((timeLeft / 1000) % 60).toString().padStart(2, '0');
+                    countdownTimerDisplay.textContent = `${minutes}:${seconds}`;
+                    timeLeft -= 1000;
+                    if(timeLeft < 0) {
+                        clearInterval(countdownIntervalId);
+                    }
+                };
+
+                update();
+                countdownIntervalId = setInterval(update, 1000);
+            }
+
+            function getAccountsDomain(apiDomain) {
+                if (!apiDomain) return 'https://accounts.zoho.com';
+
+                if (apiDomain.includes('.eu')) {
+                    return 'https://accounts.zoho.eu';
+                }
+                if (apiDomain.includes('.in')) {
+                    return 'https://accounts.zoho.in';
+                }
+                if (apiDomain.includes('.com.au')) {
+                    return 'https://accounts.zoho.com.au';
+                }
+                if (apiDomain.includes('.jp')) {
+                    return 'https://accounts.zoho.jp';
+                }
+                if (apiDomain.includes('.sa')) {
+                    return 'https://accounts.zoho.sa';
+                }
+                return 'https://accounts.zoho.com'; // Default for .com or others
+            }
+
+            // --- Core Logic ---
+            async function getNewAccessToken() {
+                logMessage('Attempting to refresh authentication token...');
+                
+                if (!config.clientId || !config.clientSecret || !config.refreshToken) {
+                    logMessage('API configuration is incomplete.', 'error');
+                    updateAuthStatus(false, 'API configuration is incomplete.');
+                    return;
+                }
+
+                const accountsDomain = getAccountsDomain(config.apiDomain);
+                const proxyUrl = 'https://corsproxy.io/?';
+                const tokenUrl = `${proxyUrl}${accountsDomain}/oauth/v2/token`;
+                const params = new URLSearchParams();
+                params.append('refresh_token', config.refreshToken);
+                params.append('client_id', config.clientId);
+                params.append('client_secret', config.clientSecret);
+                params.append('grant_type', 'refresh_token');
+
+                try {
+                    const response = await fetch(tokenUrl, {
+                        method: 'POST',
+                        body: params,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.access_token) {
+                        accessToken = data.access_token;
+                        accessTokenDisplay.textContent = accessToken.substring(0, 40) + '...';
+                        updateAuthStatus(true);
+                        logMessage('Successfully refreshed access token.');
+                        startCountdown();
+                    } else {
+                        throw new Error(data.error || 'Unknown error occurred during token refresh.');
+                    }
+                } catch (error) {
+                    accessToken = null;
+                    updateAuthStatus(false, error.message);
+                    logMessage(`Token refresh failed: ${error.message}`, 'error');
+                    if (refreshIntervalId) {
+                        clearInterval(refreshIntervalId);
+                        refreshIntervalId = null;
+                    }
+                }
+            }
+            
+            async function postLead(leadData) {
+                if (!accessToken) {
+                    logMessage('Cannot post lead. Access token is not available.', 'error');
+                    alert('Error: Access token is missing. Please check configuration and logs.');
+                    return;
+                }
+                
+                logMessage(`Posting lead for ${leadData.Last_Name}...`);
+                const proxyUrl = 'https://corsproxy.io/?';
+                const leadUrl = `${proxyUrl}${config.apiDomain}/crm/v2/Leads`;
+
+                try {
+                    const response = await fetch(leadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Zoho-oauthtoken ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            data: [leadData]
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.data && result.data[0].status === 'success') {
+                         logMessage(`Successfully created lead with ID: ${result.data[0].details.id}.`, 'info');
+                         alert('Lead created successfully!');
+                         leadForm.reset();
+                         // Re-populate the default last name after reset
+                         document.getElementById('lastName').value = "BBC New Lead";
+                    } else {
+                        throw new Error(JSON.stringify(result));
+                    }
+
+                } catch (error) {
+                    logMessage(`Failed to post lead: ${error.message}`, 'error');
+                    alert(`Failed to post lead. Check logs for details. Error: ${error.message}`);
+                }
+            }
+
+            async function generateTokensFromGrant() {
+                logMessage('Attempting to generate tokens from grant token...');
+                const clientId = clientIdInput.value;
+                const clientSecret = clientSecretInput.value;
+                const redirectUri = redirectUriInput.value;
+                const grantToken = grantTokenInput.value;
+
+                if (!clientId || !clientSecret || !redirectUri || !grantToken) {
+                    logMessage('Client ID, Client Secret, Redirect URI, and Grant Token are required for initial token generation.', 'error');
+                    alert('Error: Please fill in Client ID, Client Secret, Redirect URI, and Grant Token before generating.');
+                    return;
+                }
+
+                const selectedApiDomain = apiDomainInput.value;
+                const accountsDomain = getAccountsDomain(selectedApiDomain);
+                const proxyUrl = 'https://corsproxy.io/?';
+                const tokenUrl = `${proxyUrl}${accountsDomain}/oauth/v2/token`;
+                const params = new URLSearchParams();
+                params.append('code', grantToken);
+                params.append('redirect_uri', redirectUri);
+                params.append('client_id', clientId);
+                params.append('client_secret', clientSecret);
+                params.append('grant_type', 'authorization_code');
+
+                try {
+                    const response = await fetch(tokenUrl, {
+                        method: 'POST',
+                        body: params,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.refresh_token && data.access_token) {
+                        refreshTokenInput.value = data.refresh_token;
+                        accessToken = data.access_token;
+                        
+                        // Update UI immediately
+                        accessTokenDisplay.textContent = accessToken.substring(0, 40) + '...';
+                        statusSection.classList.remove('hidden');
+                        leadSection.classList.remove('hidden');
+                        updateAuthStatus(true);
+
+                        logMessage('Successfully generated refresh and access tokens.');
+                        logMessage("Refresh Token has been populated below. Click 'Save Configuration' to store it and start the timer.", 'info');
+                        alert("Success! Refresh token has been populated. Please save your configuration to begin the auto-refresh process.");
+                        grantTokenInput.value = ''; // Clear the single-use grant token
+                    } else {
+                        throw new Error(data.error || 'Unknown error occurred during token generation.');
+                    }
+                } catch (error) {
+                    updateAuthStatus(false, error.message);
+                    logMessage(`Token generation failed: ${error.message}`, 'error');
+                }
+            }
+
+            // --- Event Listeners ---
+            configForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                config = {
+                    clientId: clientIdInput.value,
+                    clientSecret: clientSecretInput.value,
+                    refreshToken: refreshTokenInput.value,
+                    apiDomain: apiDomainInput.value,
+                    redirectUri: redirectUriInput.value
+                };
+                localStorage.setItem('zohoConfig', JSON.stringify(config));
+                logMessage('Configuration saved.');
+                
+                if (refreshIntervalId) clearInterval(refreshIntervalId);
+
+                statusSection.classList.remove('hidden');
+                leadSection.classList.remove('hidden');
+                
+                // Get the first token on save, then start the refresh timer
+                getNewAccessToken().then(() => {
+                    if (accessToken) {
+                       refreshIntervalId = setInterval(getNewAccessToken, REFRESH_INTERVAL_MS);
+                    }
+                });
+            });
+
+            generateTokenBtn.addEventListener('click', generateTokensFromGrant);
+            
+            leadForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const lead = {
+                    Last_Name: document.getElementById('lastName').value,
+                    Phone: document.getElementById('phone').value
+                };
+                postLead(lead);
+            });
+
+
+            // --- Initialization ---
+            function initialize() {
+                const savedConfig = localStorage.getItem('zohoConfig');
+                if (savedConfig) {
+                    config = JSON.parse(savedConfig);
+                    clientIdInput.value = config.clientId;
+                    clientSecretInput.value = config.clientSecret;
+                    refreshTokenInput.value = config.refreshToken;
+                    apiDomainInput.value = config.apiDomain || 'https://www.zohoapis.com';
+                    redirectUriInput.value = config.redirectUri;
+                    logMessage('Loaded saved configuration.');
+                    
+                    statusSection.classList.remove('hidden');
+                    leadSection.classList.remove('hidden');
+                    
+                    getNewAccessToken().then(() => {
+                        if (accessToken) {
+                           refreshIntervalId = setInterval(getNewAccessToken, REFRESH_INTERVAL_MS);
+                        }
+                    });
+                } else {
+                    logMessage('No saved configuration found. Please enter your API details.');
+                }
+            }
+
+            initialize();
+        });
+    </script>
+</body>
+</html>
+
